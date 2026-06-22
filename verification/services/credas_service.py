@@ -203,7 +203,7 @@ class CredasService:
                     # actorId must be an int for the Credas API.
                     "actorId": int(self.actor_id),
                     "contactViaEmail": True,
-                    "contactViaSms": False,
+                    "contactViaSms": True,
                     "inPerson": False,
                 }
             ],

@@ -2,3 +2,5 @@ Django==4.2
 djangorestframework==3.14.0
 python-dotenv==1.0.0
 requests==2.31.0
+# Postgres driver — required only when DB_ENGINE=postgres (see .env).
+psycopg2-binary==2.9.9
