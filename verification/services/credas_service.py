@@ -147,11 +147,16 @@ class CredasService:
 
         Calls ``POST /api/v2/ci/entities``.
 
+        Credas requires ``firstName`` and ``surname`` but treats email/phone as
+        optional. They are only included in the payload when provided — sending
+        an empty ``emailAddress`` is rejected by Credas as an invalid email, so
+        the document-only flow (which may omit them) leaves them out entirely.
+
         Args:
-            first_name (str): Entity first name.
-            surname (str): Entity surname.
-            email (str): Entity email address.
-            phone (str): Entity phone number.
+            first_name (str): Entity first name (required by Credas).
+            surname (str): Entity surname (required by Credas).
+            email (str): Entity email address, or falsy to omit.
+            phone (str): Entity phone number, or falsy to omit.
             reference (str): Our unique reference for this journey.
 
         Returns:
@@ -163,11 +168,14 @@ class CredasService:
         payload = {
             "firstName": first_name,
             "surname": surname,
-            "emailAddress": email,
-            "phoneNumber": phone,
             "reference": reference,
             "userGroupId": "",
         }
+        # Only send email/phone when present — Credas rejects empty values.
+        if email:
+            payload["emailAddress"] = email
+        if phone:
+            payload["phoneNumber"] = phone
         data = self._request("POST", "/api/v2/ci/entities", json_body=payload)
 
         entity_id = data.get("id")

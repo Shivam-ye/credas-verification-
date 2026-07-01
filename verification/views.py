@@ -30,6 +30,12 @@ from .utils import (
 
 logger = logging.getLogger("verification")
 
+# Document-only requests carry no personal details, but Credas requires a name
+# to create the entity. These placeholders act as that label; document-only
+# never does name-matching, so they never affect the verification result.
+DOCUMENT_ONLY_FIRST_NAME = "Document"
+DOCUMENT_ONLY_SURNAME = "Holder"
+
 
 def sync_record_from_credas(record, service=None):
     """Fetch the latest summary from Credas and persist it onto ``record``.
@@ -235,6 +241,14 @@ class DocumentOnlyVerificationView(APIView):
 
         data = serializer.validated_data
 
+        # Only documentType + documentImage are accepted. Credas needs a name to
+        # create the entity, so use a fixed placeholder; email/phone are omitted
+        # from the Credas call entirely (document-only carries no personal data).
+        first_name = DOCUMENT_ONLY_FIRST_NAME
+        surname = DOCUMENT_ONLY_SURNAME
+        email = ""
+        phone = ""
+
         # 2/3/4. Normalise the image (file → base64 or base64 passthrough) and
         # enforce that only JPG/PNG are accepted.
         try:
@@ -260,10 +274,10 @@ class DocumentOnlyVerificationView(APIView):
         # 7. Create the entity on Credas.
         try:
             entity = service.create_entity(
-                first_name=data["firstName"],
-                surname=data["surname"],
-                email=data["email"],
-                phone=data["phone"],
+                first_name=first_name,
+                surname=surname,
+                email=email,
+                phone=phone,
                 reference=reference,
             )
         except CredasAPIException as exc:
@@ -295,10 +309,10 @@ class DocumentOnlyVerificationView(APIView):
             entity_id=entity_id,
             process_id=None,
             registration_code=registration_code,
-            first_name=data["firstName"],
-            surname=data["surname"],
-            email=data["email"],
-            phone=data["phone"],
+            first_name=first_name,
+            surname=surname,
+            email=email,
+            phone=phone,
             document_type=data["documentType"],
             reference=reference,
             verification_type="DOCUMENT_ONLY",
