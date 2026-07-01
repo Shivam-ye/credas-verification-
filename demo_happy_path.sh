@@ -69,7 +69,7 @@ PYEOF
 echo ">> Verification completed."
 
 # ── Step 4: Final VERIFIED result ───────────────────────────────────────────
-line; echo "  STEP 4 — Final result (status = VERIFIED) ✅"; line
+line; echo "  STEP 4 — Final result (status = VERIFIED)"; line
 curl -s "$BASE_URL/api/verify/result/$ENTITY_ID/" | pretty
 echo
 echo "Demo complete. entityId = $ENTITY_ID"

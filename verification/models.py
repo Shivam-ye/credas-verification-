@@ -18,6 +18,14 @@ class VerificationRecord(models.Model):
         ("FAILED", "Failed"),
     ]
 
+    # Which flavour of verification this record represents.
+    #   FULL          — magic-link journey (document + liveness + name match)
+    #   DOCUMENT_ONLY — direct document image upload, no liveness / selfie
+    VERIFICATION_TYPE_CHOICES = [
+        ("FULL", "Full - Document + Liveness"),
+        ("DOCUMENT_ONLY", "Document Only"),
+    ]
+
     # ─── Credas IDs ────────────────────────────────────────────────────────
     # entity_id is the Credas entity UUID and our primary key.
     entity_id = models.CharField(max_length=100, primary_key=True)
@@ -33,6 +41,13 @@ class VerificationRecord(models.Model):
     phone = models.CharField(max_length=20)
     document_type = models.CharField(max_length=50)
     reference = models.CharField(max_length=100, unique=True)
+
+    # ─── Verification flavour ─────────────────────────────────────────────
+    verification_type = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_TYPE_CHOICES,
+        default="FULL",
+    )
 
     # ─── Status ────────────────────────────────────────────────────────────
     status = models.CharField(

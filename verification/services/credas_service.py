@@ -73,7 +73,7 @@ class CredasService:
             "Content-Type": "application/json",
         }
 
-    def _request(self, method, path, *, json_body=None):
+    def _request(self, method, path, *, json_body=None, allow_empty=False):
         """Perform an HTTP request to Credas and return the parsed JSON.
 
         Centralises logging, timeout handling and error translation so each
@@ -83,9 +83,13 @@ class CredasService:
             method (str): HTTP verb, e.g. "GET" / "POST".
             path (str): API path beginning with "/", appended to base URL.
             json_body (dict, optional): JSON request payload for writes.
+            allow_empty (bool): When True, a successful (2xx) response with an
+                empty body returns ``{}`` instead of raising. Needed for async
+                endpoints (e.g. document upload) that acknowledge with no body.
 
         Returns:
-            The parsed JSON response (dict, list or str).
+            The parsed JSON response (dict, list or str), or ``{}`` for an
+            empty body when ``allow_empty`` is True.
 
         Raises:
             CredasAPIException: On network errors, non-2xx responses or
@@ -124,6 +128,10 @@ class CredasService:
                 "Credas returned an error response",
                 details=f"HTTP {response.status_code}: {response.text}",
             )
+
+        # Some async endpoints acknowledge with a 2xx and an empty body.
+        if allow_empty and not response.content.strip():
+            return {}
 
         try:
             return response.json()
@@ -254,6 +262,41 @@ class CredasService:
 
         logger.info("Fetched magic link for process %s", process_id)
         return link
+
+    def upload_id_document(self, entity_id, document_type_int, base64_image):
+        """Upload an ID document image directly to Credas for analysis.
+
+        Calls ``POST /api/v2/ci/entities/{entityId}/idv-entries/upload-id-document``.
+
+        This is the document-only flow: no magic link, no liveness. The call is
+        asynchronous — Credas returns no verdict here. When analysis completes
+        Credas fires the configured webhook, which triggers a summary fetch.
+
+        Args:
+            entity_id (str): The Credas entity id from :meth:`create_entity`.
+            document_type_int (int): Credas numeric document type (see the
+                document-type map in the serializer).
+            base64_image (str): Base64-encoded JPG or PNG image data.
+
+        Returns:
+            dict: The raw (acknowledgement) response from Credas.
+
+        Raises:
+            CredasAPIException: If the call fails or returns a non-2xx status.
+        """
+        path = f"/api/v2/ci/entities/{entity_id}/idv-entries/upload-id-document"
+        payload = {
+            "documentType": document_type_int,
+            "base64Image": base64_image,
+        }
+        logger.info(
+            "Uploading ID document for entity %s (documentType=%s)",
+            entity_id,
+            document_type_int,
+        )
+        data = self._request("POST", path, json_body=payload, allow_empty=True)
+        logger.info("Document upload accepted for entity %s", entity_id)
+        return data
 
     def get_entity_summary(self, entity_id):
         """Fetch the full verification summary for an entity.
