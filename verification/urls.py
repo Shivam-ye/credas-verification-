@@ -14,6 +14,12 @@ urlpatterns = [
         views.InitiateVerificationView.as_view(),
         name="verify-initiate",
     ),
+    # Start a document-only verification (direct image upload, no magic link).
+    path(
+        "verify/document-only/",
+        views.DocumentOnlyVerificationView.as_view(),
+        name="verify-document-only",
+    ),
     # Credas completion webhook (CSRF-exempt, always 200).
     path(
         "webhook/credas/",

@@ -9,6 +9,21 @@ from rest_framework import serializers
 from .models import VerificationRecord
 
 
+class _PassthroughField(serializers.Field):
+    """A field that accepts any value (file or string) and returns it as-is.
+
+    Used for ``documentImage`` so a single serializer handles both JSON base64
+    strings and multipart file uploads; the view does the real normalisation
+    and format validation.
+    """
+
+    def to_internal_value(self, data):
+        return data
+
+    def to_representation(self, value):
+        return value
+
+
 class InitiateVerificationSerializer(serializers.Serializer):
     """Validates the input body for POST /api/verify/initiate/."""
 
@@ -22,6 +37,42 @@ class InitiateVerificationSerializer(serializers.Serializer):
     documentType = serializers.ChoiceField(choices=DOCUMENT_TYPE_CHOICES)
 
 
+class DocumentOnlyVerificationSerializer(serializers.Serializer):
+    """Validates the input body for POST /api/verify/document-only/.
+
+    Accepts both ``application/json`` (with a base64 ``documentImage`` string)
+    and ``multipart/form-data`` (with an uploaded ``documentImage`` file). The
+    text fields validate identically for both; ``documentImage`` is passed
+    through untouched here and normalised/format-checked in the view, so that
+    invalid image formats can return the dedicated ``INVALID_FORMAT`` error.
+    """
+
+    # Maps the public documentType strings to Credas' numeric document types.
+    DOCUMENT_TYPE_MAP = {
+        "passport": 10,
+        "driving_licence": 2,
+        "national_id": 9,
+        "visa": 13,
+        "travel_permit": 12,
+    }
+
+    firstName = serializers.CharField(max_length=100)
+    surname = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    phone = serializers.CharField(max_length=20)
+    documentType = serializers.ChoiceField(choices=list(DOCUMENT_TYPE_MAP.keys()))
+    # Accept either a base64 string (JSON) or an uploaded file (multipart).
+    # Required, but not otherwise coerced — the view normalises and validates
+    # the actual image bytes.
+    documentImage = _PassthroughField()
+
+    def validate_documentImage(self, value):
+        """Ensure an image payload was actually provided (file or base64)."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise serializers.ValidationError("This field is required.")
+        return value
+
+
 class VerificationResultSerializer(serializers.ModelSerializer):
     """Shapes a VerificationRecord into the result response payload.
 
@@ -32,6 +83,7 @@ class VerificationResultSerializer(serializers.ModelSerializer):
 
     entityId = serializers.CharField(source="entity_id")
     name = serializers.SerializerMethodField()
+    verificationType = serializers.CharField(source="verification_type")
     documentType = serializers.CharField(source="document_type")
     createdAt = serializers.DateTimeField(source="created_at")
     completedAt = serializers.DateTimeField(source="completed_at")
@@ -42,6 +94,7 @@ class VerificationResultSerializer(serializers.ModelSerializer):
             "entityId",
             "name",
             "email",
+            "verificationType",
             "verified",
             "status",
             "documentType",
