@@ -235,6 +235,15 @@ class DocumentOnlyVerificationView(APIView):
 
         data = serializer.validated_data
 
+        # Only documentType + documentImage are required. Credas needs a name
+        # to create the entity, so fall back to a placeholder when omitted —
+        # document-only never does name-matching, so the name is just a label.
+        # email/phone default to empty and are dropped from the Credas call.
+        first_name = data.get("firstName") or "Document"
+        surname = data.get("surname") or "Holder"
+        email = data.get("email") or ""
+        phone = data.get("phone") or ""
+
         # 2/3/4. Normalise the image (file → base64 or base64 passthrough) and
         # enforce that only JPG/PNG are accepted.
         try:
@@ -260,10 +269,10 @@ class DocumentOnlyVerificationView(APIView):
         # 7. Create the entity on Credas.
         try:
             entity = service.create_entity(
-                first_name=data["firstName"],
-                surname=data["surname"],
-                email=data["email"],
-                phone=data["phone"],
+                first_name=first_name,
+                surname=surname,
+                email=email,
+                phone=phone,
                 reference=reference,
             )
         except CredasAPIException as exc:
@@ -295,10 +304,10 @@ class DocumentOnlyVerificationView(APIView):
             entity_id=entity_id,
             process_id=None,
             registration_code=registration_code,
-            first_name=data["firstName"],
-            surname=data["surname"],
-            email=data["email"],
-            phone=data["phone"],
+            first_name=first_name,
+            surname=surname,
+            email=email,
+            phone=phone,
             document_type=data["documentType"],
             reference=reference,
             verification_type="DOCUMENT_ONLY",
