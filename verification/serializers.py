@@ -56,15 +56,11 @@ class DocumentOnlyVerificationSerializer(serializers.Serializer):
         "travel_permit": 12,
     }
 
-    # Only documentType + documentImage are required. Personal details are
-    # optional: Credas needs a name to create the entity, so a placeholder is
-    # used in the view when firstName/surname are omitted. Document-only never
-    # does name-matching, so the name is just a label; email/phone are dropped
-    # from the Credas call when not supplied.
-    firstName = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    surname = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    email = serializers.EmailField(required=False, allow_blank=True)
-    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    # Only documentType + documentImage are accepted. Personal details are not
+    # part of the input at all: Credas needs a name to create the entity, so a
+    # fixed placeholder is used in the view. Document-only never does
+    # name-matching, so the name is just a label, and email/phone are omitted
+    # from the Credas call entirely.
     documentType = serializers.ChoiceField(choices=list(DOCUMENT_TYPE_MAP.keys()))
     # Accept either a base64 string (JSON) or an uploaded file (multipart).
     # Required, but not otherwise coerced — the view normalises and validates

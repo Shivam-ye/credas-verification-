@@ -30,6 +30,12 @@ from .utils import (
 
 logger = logging.getLogger("verification")
 
+# Document-only requests carry no personal details, but Credas requires a name
+# to create the entity. These placeholders act as that label; document-only
+# never does name-matching, so they never affect the verification result.
+DOCUMENT_ONLY_FIRST_NAME = "Document"
+DOCUMENT_ONLY_SURNAME = "Holder"
+
 
 def sync_record_from_credas(record, service=None):
     """Fetch the latest summary from Credas and persist it onto ``record``.
@@ -235,14 +241,13 @@ class DocumentOnlyVerificationView(APIView):
 
         data = serializer.validated_data
 
-        # Only documentType + documentImage are required. Credas needs a name
-        # to create the entity, so fall back to a placeholder when omitted —
-        # document-only never does name-matching, so the name is just a label.
-        # email/phone default to empty and are dropped from the Credas call.
-        first_name = data.get("firstName") or "Document"
-        surname = data.get("surname") or "Holder"
-        email = data.get("email") or ""
-        phone = data.get("phone") or ""
+        # Only documentType + documentImage are accepted. Credas needs a name to
+        # create the entity, so use a fixed placeholder; email/phone are omitted
+        # from the Credas call entirely (document-only carries no personal data).
+        first_name = DOCUMENT_ONLY_FIRST_NAME
+        surname = DOCUMENT_ONLY_SURNAME
+        email = ""
+        phone = ""
 
         # 2/3/4. Normalise the image (file → base64 or base64 passthrough) and
         # enforce that only JPG/PNG are accepted.
